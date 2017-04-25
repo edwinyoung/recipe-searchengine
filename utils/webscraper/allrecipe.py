@@ -97,7 +97,13 @@ class AllrecipeWebscraper(Webscraper):
 
     ingredients = bs.find_all(self.is_ingredient)
     recipe.ingredients = [i.text for i in ingredients]
-    recipe.description = bs.find_all(self.is_description)[0].text.strip()
+
+    description = bs.find_all(self.is_description)
+    if description is not None and len(description) > 0:
+      description = description[0]
+      if len(description.text.strip()) > 0:
+        # Descriptions usually start and end with double quotes, so I want to get rid of them for the database
+        recipe.description = description.text.strip()[1:-1]
 
     # Prep time, cook time, and total time may not be defined for a recipe
     # When this happens, we want to make sure that the default values are

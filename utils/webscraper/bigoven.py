@@ -114,6 +114,7 @@ class BigOvenWebscraper(Webscraper):
       for link in links:
         if link.text.strip().replace('...', '') in link['href']:
           recipe.source_url = link['href']
+          break
 
     # Otherwise, BigOven will serve me the directions as a series of <p> tags
     else:
