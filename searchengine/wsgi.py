@@ -1,5 +1,5 @@
 """
-WSGI config for csc849 project.
+WSGI config for searchengine project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "csc849.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "searchengine.settings")
 
 application = get_wsgi_application()

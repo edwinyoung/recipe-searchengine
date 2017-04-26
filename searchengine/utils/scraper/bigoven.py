@@ -1,9 +1,11 @@
-from bs4 import BeautifulSoup
-from urllib import quote
 import requests
-from models.recipes import Recipe
-from utils.time import str_to_time
-from utils.webscraper.webscraper import Webscraper
+from urllib import quote
+from bs4 import BeautifulSoup
+
+from searchengine.utils.scraper.webscraper import Webscraper
+from searchengine.utils.time import str_to_time
+from searchengine.models import Ingredient, Recipe
+
 
 class BigOvenWebscraper(Webscraper):
 
@@ -11,6 +13,7 @@ class BigOvenWebscraper(Webscraper):
     Webscraper.__init__(self)
     self.base_search_url = 'http://www.bigoven.com/recipes/{query}/best/page/{page}'
     self.recipe_card = 'panel-body'
+    self.has_additional_results = True
 
   def is_recipe_card(self, tag):
     return self.not_empty(tag) and self.is_div(tag) and self.has_class(tag, self.recipe_card)
@@ -44,6 +47,8 @@ class BigOvenWebscraper(Webscraper):
     :param page: int indicating which page of search results
     :return: list of Recipe, partially initialized
     """
+    if page == 1:
+      self.has_additional_results = True
     query = quote(query)
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url)
@@ -58,7 +63,11 @@ class BigOvenWebscraper(Webscraper):
       name = recipe.find_all(self.is_recipe_name)[0].text.strip()
       image_url = recipe.find_all(self.is_recipe_image)[0]['src']
       recipe_url = recipe.find_all(self.is_recipe_link)[0]['href']
-      recipes.append(Recipe(name, recipe_url, image_url, []))
+      recipes.append({
+        'name': name,
+        'source_url': recipe_url,
+        'image_url': image_url
+      })
     self.has_additional_results = len(recipes) > 0
     return recipes
 
@@ -86,19 +95,21 @@ class BigOvenWebscraper(Webscraper):
     temp_ingredients = []
     for i in ingredients:
       temp_ingredients.append(u' '.join([j for j in i.split() if len(j) > 0]))
-    recipe.ingredients = temp_ingredients
 
-    # BigOven never provides a recipe blurb/description, hence this boilerplate value
-    recipe.description = 'No recipe description provided.'
+    # Next, we'll want to extract the ids of the ingredients hidden in the ingredient string
+    # which usually also contains the measurements and sometimes preparation steps (like 'onions, chopped')
+    ingredient_ids = [self.match_ingredient(i) for i in temp_ingredients if i is not None]
+    ingredients = [Ingredient.objects.get(pk=i) for i in ingredient_ids if i is not None]
+
+    # BigOven never provides a recipe blurb/description, so we're skipping the description field
 
     # Total time may not be defined for a recipe
-    # When this happens, we want to make sure that the default values are
-    # inserted and that the program does not crash
+    # When this happens, we want to make sure no value is stored for that field
 
     try:
-      recipe.total_time = str_to_time(bs.find_all(self.is_total_time)[0]['title'][2:])
+      recipe['total_time'] = str_to_time(bs.find_all(self.is_total_time)[0]['title'][2:])
     except IndexError:
-      recipe.total_time = -1
+      pass
 
     # BigOven doesn't make it immediately clear if it's their own data or hosted on a 3rd party food blog
     # So I have to do this - get the directions container and see if it's BigOven's own data and not scraped data
@@ -106,19 +117,26 @@ class BigOvenWebscraper(Webscraper):
     directions = directions_container.find_all(self.is_directions)
 
     # 3rd-party hosted recipes start with 'Original recipe: http://some.food.blog/...'
-    # Funnily enough, the 'http://some.food.blog/...' is the shorthand print of 'http://some.food.blog/insert-recipe-url'
+    # Funnily enough, the 'http://food.blog/...' is the shorthand print of 'http://food.blog/insert-recipe-url'
     # So if I hit it, I have to show that 1) I can't scrape the blog, and 2) that the directions are at a new source url
     if len(directions) < 1:
       directions = ['No directions found.']
       links = directions_container.find_all('a')
       for link in links:
         if link.text.strip().replace('...', '') in link['href']:
-          recipe.source_url = link['href']
+          recipe['source_url'] = link['href']
           break
 
     # Otherwise, BigOven will serve me the directions as a series of <p> tags
     else:
       directions = [i.text.strip() for i in directions_container.find_all(self.is_directions)[0].find_all('p')]
 
-    recipe.directions = u'\n'.join(directions)
-    return recipe
+    recipe['directions'] = u'\n'.join(directions)
+    r = Recipe.objects.create(**recipe)
+    if len(ingredients) > 0:
+      for i in ingredients:
+        r.ingredients.add(i)
+
+    self.index_directions(r)
+
+    return r

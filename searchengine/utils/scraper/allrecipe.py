@@ -1,9 +1,10 @@
-from bs4 import BeautifulSoup
-from urllib import quote
 import requests
-from models.recipes import Recipe
-from utils.time import str_to_time
-from utils.webscraper.webscraper import Webscraper
+from urllib import quote
+from bs4 import BeautifulSoup
+
+from searchengine.utils.scraper.webscraper import Webscraper
+from searchengine.utils.time import str_to_time
+from searchengine.models import Ingredient, Recipe
 
 class AllrecipeWebscraper(Webscraper):
   """
@@ -56,6 +57,8 @@ class AllrecipeWebscraper(Webscraper):
     :param page: int indicating which page of search results
     :return: list of Recipe, partially initialized
     """
+    if page == 1:
+      self.has_additional_results = True
     query = quote(query)
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url)
@@ -77,8 +80,23 @@ class AllrecipeWebscraper(Webscraper):
       image_url = recipe.find_all(self.is_recipe_image)[0]['data-original-src']
       if 'userphotos' not in image_url:
         image_url = None
+
       recipe_url = self.base_recipe_url.format(recipe_url=recipe.find_all(self.is_recipe_link)[0]['href'])
-      recipes.append(Recipe(name, recipe_url, image_url, []))
+
+      # Checking to make sure that the recipe doesn't already exist in the database
+      if len(Recipe.objects.filter(source_url__iexact=recipe_url)) > 0:
+        continue
+
+      recipe_dict = {
+        'name': name,
+        'source_url': recipe_url
+      }
+
+      # Check to make sure we have an image URL before throwing it in the data object
+      if image_url is not None:
+        recipe_dict['image_url'] = image_url
+
+      recipes.append(recipe_dict)
     self.has_additional_results = len(recipes) > 0
     return recipes
 
@@ -89,40 +107,51 @@ class AllrecipeWebscraper(Webscraper):
     :param recipe:  Recipe a partially initialized Recipe object 
     :return: Recipe a fully fleshed out Recipe object
     """
-    r = requests.get(recipe.source_url)
+    r = requests.get(recipe['source_url'])
     if r.status_code is not 200:
       return recipe
 
     bs = BeautifulSoup(r.text, 'lxml')
 
     ingredients = bs.find_all(self.is_ingredient)
-    recipe.ingredients = [i.text for i in ingredients]
+
+    # We'll want to extract the ids of the ingredients hidden in the ingredient string which usually
+    # also contains the measurements and sometimes preparation instructions (like 'onions, chopped')
+    ingredient_ids = [self.match_ingredient(i) for i in ingredients if i is not None]
+    ingredients = [Ingredient.objects.get(pk=i) for i in ingredient_ids if i is not None]
 
     description = bs.find_all(self.is_description)
     if description is not None and len(description) > 0:
       description = description[0]
       if len(description.text.strip()) > 0:
         # Descriptions usually start and end with double quotes, so I want to get rid of them for the database
-        recipe.description = description.text.strip()[1:-1]
+        recipe['description'] = description.text.strip()[1:-1]
 
     # Prep time, cook time, and total time may not be defined for a recipe
-    # When this happens, we want to make sure that the default values are
-    # inserted and that the program does not crash
+    # When this happens, we want to make sure no value is stored for that field
     try:
-      recipe.prep_time = str_to_time(bs.find_all(self.is_prep_time)[0].text)
+      recipe['prep_time'] = str_to_time(bs.find_all(self.is_prep_time)[0].text)
     except IndexError:
-      recipe.prep_time = -1
+      pass
 
     try:
-      recipe.cook_time = str_to_time(bs.find_all(self.is_cook_time)[0].text)
+      recipe['cook_time'] = str_to_time(bs.find_all(self.is_cook_time)[0].text)
     except IndexError:
-      recipe.cook_time = -1
+      pass
 
     try:
-      recipe.total_time = str_to_time(bs.find_all(self.is_total_time)[0].text)
+      recipe['total_time'] = str_to_time(bs.find_all(self.is_total_time)[0].text)
     except IndexError:
-      recipe.total_time = -1
+      pass
 
     directions = bs.find_all(self.is_directions)[0]
-    recipe.directions = u'\n'.join([i.text for i in directions.find_all('li')])
-    return recipe
+    recipe['directions'] = u'\n'.join([i.text for i in directions.find_all('li')])
+
+    r = Recipe.objects.create(**recipe)
+    if len(ingredients) > 0:
+      for i in ingredients:
+        r.ingredients.add(i)
+
+    self.index_directions(r)
+
+    return r

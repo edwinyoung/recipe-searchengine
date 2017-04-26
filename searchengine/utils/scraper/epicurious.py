@@ -1,8 +1,10 @@
-from bs4 import BeautifulSoup
-from urllib import quote
 import requests
-from models.recipes import Recipe
-from utils.webscraper.webscraper import Webscraper
+from urllib import quote
+from bs4 import BeautifulSoup
+
+from searchengine.utils.scraper.webscraper import Webscraper
+from searchengine.models import Ingredient, Recipe
+
 
 class EpicuriousWebscraper(Webscraper):
 
@@ -32,6 +34,8 @@ class EpicuriousWebscraper(Webscraper):
     :param page: int indicating which page of search results
     :return: list of Recipe, partially initialized
     """
+    if page == 1:
+      self.has_additional_results = True
     query = quote(query)
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url)
@@ -50,14 +54,17 @@ class EpicuriousWebscraper(Webscraper):
       name = name_tag.text.strip()
       recipe_url = self.base_recipe_url.format(recipe_url=name_tag.find_all('a')[0]['href'])
 
-      temp_recipe = Recipe(name, recipe_url, None, [])
+      temp_recipe = {
+        'name': name,
+        'source_url': recipe_url
+      }
 
       # Epicurious has recipe descriptions in the HTML that is usually hidden to humans by CSS
       # This is a webscraper, though, so it doesn't care that it's visually hidden to the end user
       # Still not guaranteed to have a description all the time, so I'm saving it here
       recipe_description = recipe.find_all(self.is_recipe_description)
       if len(recipe_description) > 0:
-        temp_recipe.description = recipe_description[0].text.strip()
+        temp_recipe['description'] = recipe_description[0].text.strip()
 
       recipes.append(temp_recipe)
       self.has_additional_results = len(recipes) > 0
@@ -75,7 +82,12 @@ class EpicuriousWebscraper(Webscraper):
       return recipe
     bs = BeautifulSoup(r.text, 'lxml')
 
-    recipe.ingredients = [i.text.strip() for i in bs.find_all(self.is_ingredient)]
+    ingredients = [i.text.strip() for i in bs.find_all(self.is_ingredient)]
+
+    # We'll want to extract the ids of the ingredients hidden in the ingredient string which usually
+    # also contains the measurements and sometimes preparation instructions (like 'onions, chopped')
+    ingredient_ids = [self.match_ingredient(i) for i in ingredients if i is not None]
+    ingredients = [Ingredient.objects.get(pk=i) for i in ingredient_ids if i is not None]
 
     # Epicurious does not provide prep time, cook time, or total time, so we won't be changing those values
 
@@ -85,5 +97,13 @@ class EpicuriousWebscraper(Webscraper):
     else:
       directions = [i.text.strip() for i in bs.find_all(self.is_directions)[0].find_all('p')]
 
-    recipe.directions = u'\n'.join(directions)
-    return recipe
+    recipe['directions'] = u'\n'.join(directions)
+
+    r = Recipe.objects.create(**recipe)
+    if len(ingredients) > 0:
+      for i in ingredients:
+        r.ingredients.add(i)
+
+    self.index_directions(r)
+
+    return r

@@ -19,8 +19,5 @@
       </profile-state>
     </entry>
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 2.7.10 webscraper at ~/Projects/PyCharm/webscraper/virtualenv" project-jdk-type="Python SDK" />
-  <component name="PythonCompatibilityInspectionAdvertiser">
-    <option name="version" value="2" />
-  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 2.7.10 virtualenv at ~/Projects/PyCharm/searchengine/venv" project-jdk-type="Python SDK" />
 </project>

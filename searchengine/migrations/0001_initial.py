@@ -50,17 +50,17 @@ class Migration(migrations.Migration):
                 ('cook_time', models.IntegerField(null=True)),
                 ('total_time', models.IntegerField(null=True)),
                 ('directions', models.TextField(null=True)),
-                ('ingredients', models.ManyToManyField(to='csc849.Ingredient')),
+                ('ingredients', models.ManyToManyField(to='searchengine.Ingredient')),
             ],
         ),
         migrations.AddField(
             model_name='directionsindex',
             name='recipe_id',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='csc849.Recipe'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='searchengine.Recipe'),
         ),
         migrations.AddField(
             model_name='directionsfulltextindex',
             name='recipe_id',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='csc849.Recipe'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='searchengine.Recipe'),
         ),
     ]

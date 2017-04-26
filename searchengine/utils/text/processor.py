@@ -137,12 +137,3 @@ class TextProcessor(PorterStemmer):
       tokens = [i for i in tokens if i not in self.stopwords]
     tokens = map(self.stem, tokens)
     return tokens
-
-  def stem_ingredient(self, text):
-    """
-    Turns a string representing an ingredient into an ingredient token.
-    
-    :param text: unicode String representing an ingredient
-    :return: unicode String containing stems of an ingredient
-    """
-    return map(u' '.join, self.stem_document(text, remove_stopwords=False))
