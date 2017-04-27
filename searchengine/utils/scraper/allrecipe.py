@@ -98,6 +98,11 @@ class AllrecipeWebscraper(Webscraper):
 
       recipes.append(recipe_dict)
     self.has_additional_results = len(recipes) > 0
+
+    source_urls = [r['source_url'] for r in recipes]
+    source_urls = [r.source_url for r in Recipe.objects.filter(source_url__in=source_urls)]
+    recipes = [r for r in recipes if r['source_url'] not in source_urls]
+
     return recipes
 
   def fetch_recipe(self, recipe):
@@ -107,13 +112,16 @@ class AllrecipeWebscraper(Webscraper):
     :param recipe:  Recipe a partially initialized Recipe object 
     :return: Recipe a fully fleshed out Recipe object
     """
+    if Recipe.objects.filter(source_url__iexact=recipe['source_url']):
+      return
+
     r = requests.get(recipe['source_url'])
     if r.status_code is not 200:
-      return recipe
+      return
 
     bs = BeautifulSoup(r.text, 'lxml')
 
-    ingredients = bs.find_all(self.is_ingredient)
+    ingredients = [i.text.strip() for i in bs.find_all(self.is_ingredient)]
 
     # We'll want to extract the ids of the ingredients hidden in the ingredient string which usually
     # also contains the measurements and sometimes preparation instructions (like 'onions, chopped')

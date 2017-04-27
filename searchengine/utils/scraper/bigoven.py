@@ -69,6 +69,15 @@ class BigOvenWebscraper(Webscraper):
         'image_url': image_url
       })
     self.has_additional_results = len(recipes) > 0
+
+    # This is to get rid of any recipes from Allrecipes or Epicurious, since we have scrapers that'll do a more
+    # thorough job of getting us relevant data for those recipes
+    recipes = [r for r in recipes if u'allrecipes.com' not in r['source_url']
+               and u'epicurious.com' not in r['source_url']]
+    source_urls = [r['source_url'] for r in recipes]
+    source_urls = [r.source_url for r in Recipe.objects.filter(source_url__in=source_urls)]
+    recipes = [r for r in recipes if r['source_url'] not in source_urls]
+
     return recipes
 
   def fetch_recipe(self, recipe):
@@ -78,9 +87,12 @@ class BigOvenWebscraper(Webscraper):
     :param recipe:  Recipe a partially initialized Recipe object 
     :return: Recipe a fully fleshed out Recipe object
     """
-    r = requests.get(recipe.source_url)
+    if Recipe.objects.filter(source_url__iexact=recipe['source_url']):
+      return
+
+    r = requests.get(recipe['source_url'])
     if r.status_code is not 200:
-      return recipe
+      return
 
     bs = BeautifulSoup(r.text, 'lxml')
 
@@ -125,6 +137,8 @@ class BigOvenWebscraper(Webscraper):
       for link in links:
         if link.text.strip().replace('...', '') in link['href']:
           recipe['source_url'] = link['href']
+          if Recipe.objects.filter(source_url__iexact=recipe['source_url']):
+            return
           break
 
     # Otherwise, BigOven will serve me the directions as a series of <p> tags

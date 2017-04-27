@@ -58,24 +58,29 @@ class Webscraper:
     :param ingredient_string: unicode String with measurement and preparation instructions
     :return: int/None ID of the most relevant ingredient in the database, or None if not found
     """
-    if ingredient_string is None:
+    if ingredient_string is None or len(ingredient_string) < 1:
       return None
     processor = TextProcessor()
     stemmed_target_tokens = processor.stem_document(ingredient_string)
 
+    if len(stemmed_target_tokens) < 1:
+      return None
+
     # Our version of a do-while loop
     token = stemmed_target_tokens[0]
-    queryset = Ingredient.objects.filter(search_name__icontains=token)
+    queryset = [ingredient for ingredient in Ingredient.objects.filter(search_name__icontains=token)
+                if token in ingredient.search_name.split()]
 
     # Have to check that the target ingredient wasn't a single word so we don't get an IndexError
     if len(stemmed_target_tokens) > 1:
       for token in stemmed_target_tokens[1:]:
-        queryset = (queryset | Ingredient.objects.filter(search_name__icontains=token)).distinct()
+        queryset += [ingredient for ingredient in Ingredient.objects.filter(search_name__icontains=token)
+                     if token in ingredient.search_name.split()]
 
     # Sort by the ingredients that have the highest similarity first, then by which ingredient is the longer
     # Let's say our ingredient string is '1/4 cup chopped celery root'
     # We'll get all ingredients with '1', '4', 'cup', 'chop', 'celeri', 'root' in them after stemming
-    #     (Sample: 'buttercup squash', 'chop carrot', 'chop onion', 'celeri root', 'celeri root leav', 'root veggi')
+    #     (Sample: 'peanut butter cup', 'chop carrot', 'chop onion', 'celeri root', 'celeri root leav', 'root veggi')
     #
     # If we counted by tokens that match, we'd see the following:
     #     'buttercup squash': 0
@@ -99,11 +104,15 @@ class Webscraper:
     # of matching tokens, the longest ingredient string will be chosen, as it is assumed that it will be the most
     # specific and descriptive of the target tokens.
 
+    queryset = list(set(queryset))
+
     search_dictionaries = []
     for ingredient in queryset:
       dictionary = {'id': ingredient.id}
-      stemmed_search_tokens = processor.stem_document(ingredient.search_name)
+      stemmed_search_tokens = ingredient.search_name.split()
       found = [i for i in stemmed_search_tokens if i in stemmed_target_tokens]
+      dictionary['name'] = ingredient.display_name
+      dictionary['search'] = ingredient.search_name
       dictionary['similarity'] = len(found) / float(len(stemmed_search_tokens))
       dictionary['len'] = len(stemmed_search_tokens)
       search_dictionaries.append(dictionary)
