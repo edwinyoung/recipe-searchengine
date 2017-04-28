@@ -1,5 +1,7 @@
 # coding=utf-8
+from operator import itemgetter
 from nltk.stem.porter import PorterStemmer
+from searchengine.models import Ingredient
 
 # We want to extend nltk.stem.porter.PorterStemmer because the bulk of it does not need to be rewritten
 # However, we do want something that can stem an entire document/string at once instead of just one document at a time
@@ -8,10 +10,10 @@ class TextProcessor(PorterStemmer):
   def __init__(self):
     super(TextProcessor, self).__init__()
     self.stopwords = (u'the', u'is', u'at', u'of', u'on', u'and', u'a')
-    self.quotes = u'\'’'  # Unicode string containing the single quote (it's) AND the right single quote (it’s)
+    self.quotes = u"‘'’"  # Unicode string containing the single quote (it's) AND the right single quote (it’s)
 
     # Character replacement dictionary, since some ingredients may be listed in their recipes with or
-    # without their special characters - acts as another step in normalization in the search engine
+    # without their special characters - acts as another step in normalization for the search engine
     self.char_dict = {
       u'à': u'a',
       u'á': u'a',
@@ -137,3 +139,74 @@ class TextProcessor(PorterStemmer):
       tokens = [i for i in tokens if i not in self.stopwords]
     tokens = map(self.stem, tokens)
     return tokens
+
+  def match_ingredient(self, ingredient_string):
+    """
+    Attempts to find the id of the ingredient whose name most closely matches the ingredient listed for a recipe.
+
+    :param ingredient_string: unicode String with measurement and preparation instructions
+    :return: int/None ID of the most relevant ingredient in the database, or None if not found
+    """
+    if ingredient_string is None or len(ingredient_string) < 1:
+      return None
+    stemmed_target_tokens = self.stem_document(ingredient_string)
+
+    if len(stemmed_target_tokens) < 1:
+      return None
+
+    # Our version of a do-while loop
+    token = stemmed_target_tokens[0]
+    queryset = [ingredient for ingredient in Ingredient.objects.filter(search_name__icontains=token)
+                if token in ingredient.search_name.split()]
+
+    # Have to check that the target ingredient wasn't a single word so we don't get an IndexError
+    if len(stemmed_target_tokens) > 1:
+      for token in stemmed_target_tokens[1:]:
+        queryset += [ingredient for ingredient in Ingredient.objects.filter(search_name__icontains=token)
+                     if token in ingredient.search_name.split()]
+
+    # Sort by the ingredients that have the highest similarity first, then by which ingredient is the longer
+    # Let's say our ingredient string is '1/4 cup chopped celery root'
+    # We'll get all ingredients with '1', '4', 'cup', 'chop', 'celeri', 'root' in them after stemming
+    #     (Sample: 'peanut butter cup', 'chop carrot', 'chop onion', 'celeri root', 'celeri root leav', 'root veggi')
+    #
+    # If we counted by tokens that match, we'd see the following:
+    #     'buttercup squash': 0
+    #     'chop carrot': 1
+    #     'chop onion': 1
+    #     'celeri root': 2
+    #     'celeri root leav': 2
+    #     'root veggi': 1
+    #
+    # So obviously we need to find another heuristic than just the number of tokens from the ingredients model that
+    # match the target ingredient string passed into the function. Since we don't want overly long strings that obscure
+    # our fitting algorithm, we can use the % match instead as a heuristic to get the following:
+    #     'buttercup squash': 0.0000
+    #     'chop carrot': 0.5000
+    #     'chop onion': 0.5000
+    #     'celeri root': 1.0000
+    #     'celeri root leav': 0.6667
+    #     'root veggi': 0.5000
+    #
+    # Which now gives us the desired ingredient. In the event that two or more ingredients have the same percentage
+    # of matching tokens, the longest ingredient string will be chosen, as it is assumed that it will be the most
+    # specific and descriptive of the target tokens.
+
+    queryset = list(set(queryset))
+
+    search_dictionaries = []
+    for ingredient in queryset:
+      dictionary = {'id': ingredient.id}
+      stemmed_search_tokens = ingredient.search_name.split()
+      found = [i for i in stemmed_search_tokens if i in stemmed_target_tokens]
+      dictionary['name'] = ingredient.display_name
+      dictionary['search'] = ingredient.search_name
+      dictionary['similarity'] = len(found) / float(len(stemmed_search_tokens))
+      dictionary['len'] = len(stemmed_search_tokens)
+      search_dictionaries.append(dictionary)
+
+    if len(search_dictionaries) < 1:
+      return None
+
+    search_dictionaries = sorted(search_dictionaries, key=itemgetter('similarity', 'len'), reverse=True)
+    return search_dictionaries[0]['id']

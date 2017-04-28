@@ -5,8 +5,8 @@
 *.swp
 *.tmp
 
-# Project settings file
-config.py
+# Program data
+searchengine/data
 
 
 ## PyCharm files

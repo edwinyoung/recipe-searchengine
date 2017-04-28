@@ -1,6 +1,7 @@
 import requests
 from urllib import quote
 from bs4 import BeautifulSoup
+from titlecase import titlecase
 
 from searchengine.utils.scraper.webscraper import Webscraper
 from searchengine.utils.time import str_to_time
@@ -61,7 +62,7 @@ class AllrecipeWebscraper(Webscraper):
       self.has_additional_results = True
     query = quote(query)
     search_url = self.base_search_url.format(query=query, page=page)
-    r = requests.get(search_url)
+    r = requests.get(search_url, headers=self.request_headers)
     if r.status_code is not 200:
       self.has_additional_results = False
       return []
@@ -88,7 +89,7 @@ class AllrecipeWebscraper(Webscraper):
         continue
 
       recipe_dict = {
-        'name': name,
+        'name': titlecase(name),
         'source_url': recipe_url
       }
 
@@ -115,7 +116,7 @@ class AllrecipeWebscraper(Webscraper):
     if Recipe.objects.filter(source_url__iexact=recipe['source_url']):
       return
 
-    r = requests.get(recipe['source_url'])
+    r = requests.get(recipe['source_url'], headers=self.request_headers)
     if r.status_code is not 200:
       return
 
@@ -125,7 +126,7 @@ class AllrecipeWebscraper(Webscraper):
 
     # We'll want to extract the ids of the ingredients hidden in the ingredient string which usually
     # also contains the measurements and sometimes preparation instructions (like 'onions, chopped')
-    ingredient_ids = [self.match_ingredient(i) for i in ingredients if i is not None]
+    ingredient_ids = [self.text_processor.match_ingredient(i) for i in ingredients if i is not None]
     ingredients = [Ingredient.objects.get(pk=i) for i in ingredient_ids if i is not None]
 
     description = bs.find_all(self.is_description)

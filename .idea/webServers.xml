@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="80682529-1ff1-4698-b3ad-81f21a3cd72b" name="849-AWS" url="http://54.241.132.224">
+        <fileTransfer host="54.241.132.224" port="22" privateKey="/Volumes/Lollipop/.ssh/csc849.pem" rootFolder="/home/ed" accessType="SFTP" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
