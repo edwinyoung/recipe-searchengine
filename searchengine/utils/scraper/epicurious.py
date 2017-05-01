@@ -37,7 +37,7 @@ class EpicuriousWebscraper(Webscraper):
     """
     if page == 1:
       self.has_additional_results = True
-    query = quote(query)
+    query = quote(query.encode('utf8'))
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url, headers=self.request_headers)
     if r.status_code is not 200:
@@ -54,6 +54,9 @@ class EpicuriousWebscraper(Webscraper):
       name_tag = recipe.find_all('h4')[0]
       name = name_tag.text.strip()
       recipe_url = self.base_recipe_url.format(recipe_url=name_tag.find_all('a')[0]['href'])
+
+      if len(recipe_url) < 1:
+        continue
 
       temp_recipe = {
         'name': titlecase(name),

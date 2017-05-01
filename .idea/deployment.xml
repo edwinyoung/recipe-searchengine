@@ -5,7 +5,7 @@
       <paths name="849-AWS">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/ed/searchengine" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/searchengine" local="$PROJECT_DIR$" web="/" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/venv" />

@@ -44,15 +44,15 @@ class Command(BaseCommand):
     previous_time = time.time()
     logfile_name = os.path.join(settings.BASE_DIR, time.strftime('searchengine/data/%Y%m%d-%H%M%S-scraping.log'))
 
-    # We want to cap the total number of results for an initial run,
-    # particularly if only one of our sources is returning results
-    #
-    # Worst case scenario, given 20 unique results/query from a single source,
-    # this will take about 14 minutes with our self-imposed rate limit of 1 request/5 seconds
-    max_recipe_requests = 150
-
     with codecs.open(logfile_name, 'w', 'utf-8') as logfile:
       for ingredient in ingredients:
+        # We want to cap the total number of results for an initial run,
+        # particularly if only one of our sources is returning results
+        #
+        # Worst case scenario, given 20 unique results/query from a single source,
+        # this will take about 14 minutes with our self-imposed rate limit of 1 request/5 seconds
+        max_recipe_requests = 100
+
         counter = 0  # Keeps track of the total number of unique recipes we have for our query
 
         logfile.write(u'Scraping for recipes containing "{0}"...\n'.format(ingredient.display_name))
@@ -72,7 +72,7 @@ class Command(BaseCommand):
 
           # Artificially rate-limit our queries so we don't trip DDoS protections and get null-routed
           # Or worse, have Amazon pull the plug on our AWS instance and threaten to close our AWS account
-          if time.time() - previous_time < 5:
+          if time.time() - previous_time < 4:
             time.sleep(2)
             continue
 
@@ -88,6 +88,17 @@ class Command(BaseCommand):
           if ep_scraper.has_additional_results:
             ep_recipes = ep_scraper.fetch_recipes(ingredient.display_name, page=page)
 
+          # In the event that only one source is returning results, we want to limit the
+          # number of recipes we scrape because it significantly slows down our webscraper
+          has_additional_recipes = 1 if ar_recipes else 0
+          has_additional_recipes += 1 if bo_recipes else 0
+          has_additional_recipes += 1 if ep_recipes else 0
+
+          if has_additional_recipes <= 1 and max_recipe_requests >= 50:
+            max_recipe_requests = 30
+          elif has_additional_recipes > 1 and max_recipe_requests < 50:
+            max_recipe_requests = 100
+
           recipe_count = len(ar_recipes + bo_recipes + ep_recipes)
           if recipe_count > 0:
             logfile.write(u'Retrieving {0} recipes...\n'.format(recipe_count))
@@ -101,7 +112,7 @@ class Command(BaseCommand):
           previous_time = time.time()
 
           while ar_recipes or bo_recipes or ep_recipes and counter <= max_recipe_requests:
-            if time.time() - previous_time < 5:
+            if time.time() - previous_time < 4:
               time.sleep(2)
               continue
 

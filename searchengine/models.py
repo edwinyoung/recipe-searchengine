@@ -10,9 +10,9 @@ class Ingredient(models.Model):
 
 class Recipe(models.Model):
   name = models.CharField(max_length=200)
-  source_url = models.CharField(max_length=255, unique=True)
-  image_url = models.CharField(max_length=255, null=True)
-  description = models.CharField(max_length=1000, null=True)
+  source_url = models.TextField(unique=True)
+  image_url = models.TextField(null=True)
+  description = models.TextField(null=True)
   prep_time = models.IntegerField(null=True)
   cook_time = models.IntegerField(null=True)
   total_time = models.IntegerField(null=True)

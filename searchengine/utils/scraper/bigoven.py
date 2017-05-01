@@ -26,7 +26,8 @@ class BigOvenWebscraper(Webscraper):
     return self.not_empty(tag) and self.is_link(tag) and self.has_href(tag) and '/recipe' in tag['href']
 
   def is_recipe_name(self, tag):
-    return self.not_empty(tag) and self.is_li(tag) and self.has_class(tag, 'list-group-recipetile-1')
+    return self.not_empty(tag) and (self.is_li(tag) and self.has_class(tag, 'list-group-recipetile-1')) or \
+           (self.is_h1(tag) and self.has_class(tag, 'fn') and tag.has_attr('itemprop') and 'name' in tag['itemprop'])
 
   def is_total_time(self, tag):
     return self.not_empty(tag) and self.is_time(tag) and tag.has_attr('title')
@@ -50,7 +51,7 @@ class BigOvenWebscraper(Webscraper):
     """
     if page == 1:
       self.has_additional_results = True
-    query = quote(query)
+    query = quote(query.encode('utf8'))
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url, headers=self.request_headers)
     if r.status_code is not 200:
@@ -64,11 +65,20 @@ class BigOvenWebscraper(Webscraper):
       name = recipe.find_all(self.is_recipe_name)[0].text.strip()
       image_url = recipe.find_all(self.is_recipe_image)[0]['src']
       recipe_url = recipe.find_all(self.is_recipe_link)[0]['href']
-      recipes.append({
+
+      if len(recipe_url) < 1:
+        continue
+
+      recipe_dict = {
         'name': titlecase(name),
         'source_url': recipe_url,
-        'image_url': image_url
-      })
+      }
+
+      if image_url is not None and 0 < len(image_url) and u'recipe-no-image' not in image_url:
+        recipe_dict['image_url'] = image_url
+
+      recipes.append(recipe_dict)
+
     self.has_additional_results = len(recipes) > 0
 
     # This is to get rid of any recipes from Allrecipes or Epicurious, since we have scrapers that'll do a more
@@ -97,6 +107,11 @@ class BigOvenWebscraper(Webscraper):
 
     bs = BeautifulSoup(r.text, 'lxml')
 
+    # Check to see if recipe name has ellipsis & replace if it does
+    if u'...' in recipe['name']:
+      recipe['name'] = bs.find_all(self.is_recipe_name)[0].text.strip()
+      recipe['name'] = titlecase(u' '.join(recipe['name'].split()))
+
     # BigOven just makes this unnecessarily difficult to extract ingredients from a recipe
     # They place it in a <table> instead of a <ul> like a sane web dev
     ingredient_table = bs.find_all('table')[0]
@@ -108,6 +123,10 @@ class BigOvenWebscraper(Webscraper):
     temp_ingredients = []
     for i in ingredients:
       temp_ingredients.append(u' '.join([j for j in i.split() if len(j) > 0]))
+
+    # Recipes with 100(!)+ ingredients should not be in our database
+    if not 0 < len(temp_ingredients) < 100:
+      return None
 
     # Next, we'll want to extract the ids of the ingredients hidden in the ingredient string
     # which usually also contains the measurements and sometimes preparation steps (like 'onions, chopped')

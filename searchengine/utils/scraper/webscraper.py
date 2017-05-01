@@ -1,6 +1,7 @@
-from searchengine.utils.text.processor import TextProcessor
 from requests.utils import default_headers
 from django.conf import settings
+from searchengine.utils.text.processor import TextProcessor
+from searchengine.models import DirectionsIndex, DirectionsFulltextIndex
 
 class Webscraper:
   """
@@ -49,8 +50,23 @@ class Webscraper:
   def is_li(self, tag):
     return tag.name == 'li'
 
+  def is_h1(self, tag):
+    return tag.name == 'h1'
+
   def is_h4(self, tag):
     return tag.name == 'h4'
 
   def is_p(self, tag):
     return tag.name == 'p'
+
+  def index_directions(self, recipe):
+    directions = recipe.directions
+
+    direction_tokens = self.text_processor.stem_document(directions, remove_stopwords=True)
+    direction_fulltext_tokens = self.text_processor.stem_document(directions, remove_stopwords=False)
+
+    for i in range(len(direction_tokens)):
+      DirectionsIndex.objects.create(recipe=recipe, stem=direction_tokens[i], position=i)
+
+    for i in range(len(direction_fulltext_tokens)):
+      DirectionsFulltextIndex.objects.create(recipe=recipe, stem=direction_fulltext_tokens[i], position=i)

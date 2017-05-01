@@ -60,7 +60,7 @@ class AllrecipeWebscraper(Webscraper):
     """
     if page == 1:
       self.has_additional_results = True
-    query = quote(query)
+    query = quote(query.encode('utf8'))
     search_url = self.base_search_url.format(query=query, page=page)
     r = requests.get(search_url, headers=self.request_headers)
     if r.status_code is not 200:
@@ -86,6 +86,9 @@ class AllrecipeWebscraper(Webscraper):
 
       # Checking to make sure that the recipe doesn't already exist in the database
       if len(Recipe.objects.filter(source_url__iexact=recipe_url)) > 0:
+        continue
+
+      if len(recipe_url) < 1:
         continue
 
       recipe_dict = {
