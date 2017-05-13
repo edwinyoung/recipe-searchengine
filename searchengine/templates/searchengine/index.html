@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  {% block pagename %}
+    <title>Cookery</title>
+  {% endblock %}
+
+  <link href="/static/searchengine/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <link href="/static/searchengine/css/print.css" media="print" rel="stylesheet" type="text/css" />
+  <!--[if IE]>
+    <link href="/static/searchengine/css/ie.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <![endif]-->
+</head>
+<body>
+  <div id="wrapper">
+    {% block content %}
+      <form action="/search" method="get">
+        <input id="q" name="q" type="text">
+        <button type="submit">Search</button>
+      </form>
+    {% endblock %}
+  </div>
+</body>
+</html>

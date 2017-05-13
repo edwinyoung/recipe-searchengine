@@ -108,7 +108,7 @@ class EpicuriousWebscraper(Webscraper):
     if len(directions) < 1:
       directions = ['No directions found.']
     else:
-      directions = [i.text.strip() for i in bs.find_all(self.is_directions)[0].find_all('p')]
+      directions = [i.text.strip() for i in bs.find_all(self.is_directions)]
 
     recipe['directions'] = u'\n'.join(directions)
 

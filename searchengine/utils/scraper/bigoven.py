@@ -152,14 +152,15 @@ class BigOvenWebscraper(Webscraper):
     # Funnily enough, the 'http://food.blog/...' is the shorthand print of 'http://food.blog/insert-recipe-url'
     # So if I hit it, I have to show that 1) I can't scrape the blog, and 2) that the directions are at a new source url
     if len(directions) < 1:
-      directions = ['No directions found.']
-      links = directions_container.find_all('a')
-      for link in links:
-        if link.text.strip().replace('...', '') in link['href']:
-          recipe['source_url'] = link['href']
-          if Recipe.objects.filter(source_url__iexact=recipe['source_url']):
-            return
-          break
+      return None
+      # directions = ['No directions found.']
+      # links = directions_container.find_all('a')
+      # for link in links:
+      #   if link.text.strip().replace('...', '') in link['href']:
+      #     recipe['source_url'] = link['href']
+      #     if Recipe.objects.filter(source_url__iexact=recipe['source_url']) or u'traeger' in recipe['source_url']:
+      #       return
+      #     break
 
     # Otherwise, BigOven will serve me the directions as a series of <p> tags
     else:

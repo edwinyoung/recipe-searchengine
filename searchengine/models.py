@@ -18,9 +18,26 @@ class Recipe(models.Model):
   total_time = models.IntegerField(null=True)
   ingredients = models.ManyToManyField(Ingredient)
   directions = models.TextField(null=True)
+  score = models.FloatField(null=True)
 
   def __str__(self):
     return u', '.join(map(unicode, (self.name, self.source_url))).encode('utf-8')
+
+
+class IngredientIndex(models.Model):
+  ingredient = models.ForeignKey(Ingredient)
+  stem = models.CharField(max_length=60)
+
+  def __str__(self):
+    return u', '.join(map(unicode, (self.ingredient, self.stem))).encode('utf-8')
+
+
+class StemScore(models.Model):
+  stem = models.CharField(max_length=30, primary_key=True)
+  idf = models.FloatField()
+
+  def __str__(self):
+    return u', '.join(map(unicode, (self.stem, self.idf))).encode('utf-8')
 
 
 class DirectionsIndex(models.Model):
