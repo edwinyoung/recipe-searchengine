@@ -5,20 +5,24 @@
   {% block pagename %}
     <title>Cookery</title>
   {% endblock %}
-
-  <link href="/static/searchengine/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css" />
-  <link href="/static/searchengine/css/print.css" media="print" rel="stylesheet" type="text/css" />
+  <link href="https://fonts.googleapis.com/css?family=Raleway:700|Roboto&amp;subset=latin-ext" rel="stylesheet">
+  <link href="/static/css/styles.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <link href="/static/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <link href="/static/css/print.css" media="print" rel="stylesheet" type="text/css" />
   <!--[if IE]>
-    <link href="/static/searchengine/css/ie.css" media="screen, projection" rel="stylesheet" type="text/css" />
+    <link href="/static/css/ie.css" media="screen, projection" rel="stylesheet" type="text/css" />
   <![endif]-->
 </head>
 <body>
-  <div id="wrapper">
+  <div id="wrapper" class="container-fluid {% if home %}home home-image-{{ random_number }}{% endif %}">
+    <div id="disclaimer">SFSU Search Engines Project, Spring 2017. For Demonstration Only.</div>
     {% block content %}
-      <form action="/search" method="get">
-        <input id="q" name="q" type="text">
-        <button type="submit">Search</button>
-      </form>
+      <div class="container col-md-offset-2 col-lg-offset-3 col-md-8 col-lg-6">
+        <form action="/search" method="get">
+          <input id="q" name="q" type="text">
+          <button type="submit" class="btn btn-default">Search</button>
+        </form>
+      </div>
     {% endblock %}
   </div>
 </body>

@@ -13,6 +13,8 @@
             <excludedPath path="/searchengine/venv" />
             <excludedPath path="/searchengine/.idea" />
             <excludedPath path="/searchengine/.git" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.sass-cache" />
+            <excludedPath local="true" path="$PROJECT_DIR$/sass" />
           </excludedPaths>
         </serverdata>
       </paths>

@@ -1,0 +1,72 @@
+{% extends 'searchengine/index.html' %}
+
+{% block pagename %}
+  <title>Cookery</title>
+{% endblock %}
+
+{% block content %}
+  <div class="container search-container">
+    <form action="/search" method="get">
+      <input id="q" name="q" type="text" value="{{ query }}">
+      <button type="submit" class="btn btn-default">Search</button>
+    </form>
+  </div>
+  <div id="results" class="{% if not results %}no-results no-result-image-{{ random_number }}{% endif %}">
+    {% if results %}
+      <div id="result-stats">Retrieved {{ recipe_count }} recipes ({{ time }} seconds).</div>
+      <ul class="list-unstyled">
+        {% for recipe in recipes %}
+          {% if recipe.image_url %}
+            <li class="result has-image">
+              <div class="recipe image">
+                <a href="{{ recipe.source_url }}">
+                  <img src="{{ recipe.image_url }}" width="120" height="120">
+                </a>
+              </div>
+              <div class="recipe has-image">
+                <p class="recipe-title h4">
+                  <a href="{{ recipe.source_url }}">{{ recipe.name }}</a>
+                </p>
+                <p class="recipe-url">{{ recipe.source_url }}</p>
+                {% if recipe.description %}
+                  <p class="recipe-description">{{ recipe.description }}</p>
+                {% else %}
+                  <p class="recipe-description no-description">
+                    <i>No description available for this recipe.</i>
+                  </p>
+                {% endif %}
+              </div>
+            </li>
+          {% else %}
+            <li class="result no-image">
+              <div class="recipe no-image">
+                <div class="recipe image">
+                  <a href="{{ recipe.source_url }}">
+                    <img src="/static/img/no-recipe-image.jpg" width="120" height="120">
+                  </a>
+                </div>
+                <p class="recipe-title h4">
+                  <a href="{{ recipe.source_url }}">{{ recipe.name }}</a>
+                </p>
+                <p class="recipe-url">{{ recipe.source_url }}</p>
+                {% if recipe.description %}
+                  <p class="recipe-description">{{ recipe.description }}</p>
+                {% else %}
+                  <p class="recipe-description no-description">
+                    <i>No description available for this recipe.</i>
+                  </p>
+                {% endif %}
+              </div>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div id="no-result-message" class="center">
+        <p>
+          Sorry, found no results.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
