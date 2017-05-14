@@ -1,17 +1,20 @@
 {% extends 'searchengine/index.html' %}
 
 {% block pagename %}
-  <title>Cookery</title>
+  <title>Cookery{% if query %} - {{ query }}{% endif %}</title>
 {% endblock %}
 
 {% block content %}
   <div class="container search-container">
+    <a href="/">
+      <img class="app-name" src="/static/img/logo.png" width="190" height="60" />
+    </a>
     <form action="/search" method="get">
-      <input id="q" name="q" type="text" value="{{ query }}">
+      <input id="q" name="q" type="text" value="{{ query }}" placeholder="Enter ingredients separated by commas (e.g. 'celery, onions')">
       <button type="submit" class="btn btn-default">Search</button>
     </form>
   </div>
-  <div id="results" class="{% if not results %}no-results no-result-image-{{ random_number }}{% endif %}">
+  <div id="results" class="{% if not results %}no-result no-result-image-{{ random_number }}{% endif %}">
     {% if results %}
       <div id="result-stats">Retrieved {{ recipe_count }} recipes ({{ time }} seconds).</div>
       <ul class="list-unstyled">
@@ -23,7 +26,7 @@
                   <img src="{{ recipe.image_url }}" width="120" height="120">
                 </a>
               </div>
-              <div class="recipe has-image">
+              <div class="recipe-details">
                 <p class="recipe-title h4">
                   <a href="{{ recipe.source_url }}">{{ recipe.name }}</a>
                 </p>
@@ -39,12 +42,12 @@
             </li>
           {% else %}
             <li class="result no-image">
-              <div class="recipe no-image">
-                <div class="recipe image">
-                  <a href="{{ recipe.source_url }}">
-                    <img src="/static/img/no-recipe-image.jpg" width="120" height="120">
-                  </a>
-                </div>
+              <div class="recipe image">
+                <a href="{{ recipe.source_url }}">
+                  <img src="/static/img/no-recipe-image.jpg" width="120" height="120">
+                </a>
+              </div>
+              <div class="recipe-details">
                 <p class="recipe-title h4">
                   <a href="{{ recipe.source_url }}">{{ recipe.name }}</a>
                 </p>
@@ -60,12 +63,24 @@
             </li>
           {% endif %}
         {% endfor %}
+        <li class="result">
+          <div class="page-nav">
+            <div class="logo-c logo-nav"></div>
+            {% for page in pages %}
+              <a href="{{ base_url }}&pg={{ page }}">
+                <span class="page-select logo-nav{% if page == current_page %} active{% endif %}">{{ page }}</span>
+              </a>
+            {% endfor %}
+            {% if only_page %}
+              <span class="page-select logo-nav inactive"></span>
+            {% endif %}
+            <div class="logo-kery logo-nav"></div>
+          </div>
+        </li>
       </ul>
     {% else %}
-      <div id="no-result-message" class="center">
-        <p>
-          Sorry, found no results.
-        </p>
+      <div id="no-result-message">
+        <p>Sorry, no recipes found{% if query %} for “{{ query }}”{% endif %}.</p>
       </div>
     {% endif %}
   </div>

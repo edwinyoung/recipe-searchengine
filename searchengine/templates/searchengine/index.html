@@ -5,6 +5,7 @@
   {% block pagename %}
     <title>Cookery</title>
   {% endblock %}
+  <link rel="shortcut icon" type="image/png" href="/static/img/favicon.ico"/>
   <link href="https://fonts.googleapis.com/css?family=Raleway:700|Roboto&amp;subset=latin-ext" rel="stylesheet">
   <link href="/static/css/styles.css" media="screen, projection" rel="stylesheet" type="text/css" />
   <link href="/static/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css" />
@@ -14,12 +15,13 @@
   <![endif]-->
 </head>
 <body>
-  <div id="wrapper" class="container-fluid {% if home %}home home-image-{{ random_number }}{% endif %}">
+  <div id="wrapper" class="container-fluid {% if home %}home home-image-{{ random_number }}{% else %}search{% endif %}">
     <div id="disclaimer">SFSU Search Engines Project, Spring 2017. For Demonstration Only.</div>
     {% block content %}
-      <div class="container col-md-offset-2 col-lg-offset-3 col-md-8 col-lg-6">
+      <div class="container search-container">
+        <img class="app-name" src="/static/img/logo.png" width="316" height="100" />
         <form action="/search" method="get">
-          <input id="q" name="q" type="text">
+          <input id="q" name="q" type="text" placeholder="Enter ingredients separated by commas (e.g. 'celery, onions')">
           <button type="submit" class="btn btn-default">Search</button>
         </form>
       </div>

@@ -1,4 +1,5 @@
 # coding=utf-8
+from math import ceil
 from time import time
 from random import randint
 from operator import itemgetter
@@ -87,6 +88,9 @@ def search(request):
     search_relaxed = False
     recipes = full_match_recipes
 
+  if len(recipes) < 1:
+    return no_results(request)
+
   scores = {}
   for recipe in recipes:
     recipe_ingredients = recipe.ingredients.all().values_list('search_name', flat=True)
@@ -106,7 +110,7 @@ def search(request):
       scores[recipe] *= 1.5
 
     # Penalize recipes which have overly long ingredient lists relative to the recipe directions
-    # Significantly slows down our ranking system but gives us more relevant results
+    # Significantly slows down our ranking system (increases processing time by >200%) but gives us more relevant results
     ingredients_len = len(u' '.join([i for i in recipe_ingredients]).split())
     directions_len = len(recipe.directions.split())
     if directions_len < ingredients_len * 2:
@@ -136,15 +140,25 @@ def search(request):
     'recipe_start': 10 * (pg - 1) + 1,
     'recipe_count': len(recipes),
     'time': "{:.3f}".format(time() - start_time),
-    'random_number': randint(1, 5),
+    'current_page': pg,
+    'base_url': request.path + '?q=' + querydict['q'],
   }
   context['recipe_end'] = context['recipe_start'] + len(recipes)
+
+  total_pages = int(ceil(len(recipes) / 10.))
+  context['only_page'] = total_pages == 1
+  if total_pages >= 10:
+    start_page = pg - 5 if pg - 5 >= 1 else 1
+    end_page = start_page + 10
+    context['pages'] = [i for i in range(start_page, end_page)]
+  else:
+    context['pages'] = [i for i in range(1, total_pages + 1)]
 
   return HttpResponse(template.render(context, request))
 
 
 def no_results(request):
-  empty_query = 'q' in request.GET
+  empty_query = 'q' not in request.GET
 
   template = loader.get_template('searchengine/search.html')
   context = dict(
@@ -153,6 +167,6 @@ def no_results(request):
     random_number=randint(1, 5)
   )
   if not empty_query:
-    context['query'] = request.GET['q'].replace(u',', u', ')
+    context['query'] = request.GET['q']
 
   return HttpResponse(template.render(context, request))
